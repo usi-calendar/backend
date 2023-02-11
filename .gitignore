@@ -1,0 +1,10 @@
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+.evn
+./static/cal_courses.json
+
+.DS_Store
