@@ -4,7 +4,7 @@
 *.so
 *.dylib
 
-.evn
+.env
 ./static/cal_courses.json
 
 .DS_Store
