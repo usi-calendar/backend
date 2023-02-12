@@ -95,10 +95,22 @@ func GetShortened(c *gin.Context) {
 	c.Data(200, ContentTypeCalendar, []byte(calendar.Serialize()))
 }
 
-func GetCourses(c *gin.Context) {
+// func GetCourses(c *gin.Context) {
+// 	setAccessControlHeader(c)
+// 	c.File("./static/cal_courses.json")
+// 	c.Status(200)
+// }
+
+func GetCalendars(c *gin.Context) {
 	setAccessControlHeader(c)
-	c.File("./static/cal_courses.json")
-	c.Status(200)
+	var data *string = mongo.LatestCourses()
+
+	if data == nil {
+		c.Status(500)
+		return
+	}
+
+	c.Data(200, ContentTypeJSON, []byte(*data))
 }
 
 func setAccessControlHeader(c *gin.Context) {

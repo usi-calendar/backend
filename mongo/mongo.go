@@ -34,6 +34,12 @@ type ShortLink struct {
 	Short_url string             `bson:"short_url,omitempty"`
 }
 
+type Courses struct {
+	ID         primitive.ObjectID `bson:"_id"`
+	DateAdded  primitive.DateTime `bson:"dateAdded,omitempty"`
+	DataString string             `bson:"data,omitempty"`
+}
+
 func connection() *mongo.Client {
 
 	// Load .env file
@@ -58,7 +64,7 @@ func connection() *mongo.Client {
 		panic(err)
 	}
 
-	Db = client.Database("usi-calendar-development")
+	Db = client.Database(os.Getenv("MONGO_DB_NAME"))
 
 	ShortLinksColl = Db.Collection("short_links")
 
@@ -140,4 +146,31 @@ func Shorten(url *string, filter *[]string) *string {
 	}
 
 	return &alphanum
+}
+
+func LatestCourses() *string {
+	coursesColl := Db.Collection("calendars")
+	findOptions := options.Find()
+	findOptions.SetSort(bson.D{{Key: "dateAdded", Value: -1}}).SetLimit(1)
+
+	cursor, err := coursesColl.Find(context.Background(), bson.D{}, findOptions)
+
+	if err != nil {
+		return nil
+	}
+
+	// There can only be one element in the cursor.
+	var result Courses
+	for cursor.Next(context.TODO()) {
+
+		if err := cursor.Decode(&result); err != nil {
+
+			return nil
+		}
+	}
+	if err := cursor.Err(); err != nil {
+		return nil
+	}
+
+	return &result.DataString
 }
