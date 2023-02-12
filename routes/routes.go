@@ -25,7 +25,7 @@ func GetInfo(c *gin.Context) {
 		return
 	}
 
-	c.Header("Access-Control-Allow-Origin", "*")
+	setAccessControlHeader(c)
 
 	subjects, _ := cal.GetAllSubjects(&url)
 
@@ -59,7 +59,8 @@ func GetShorten(c *gin.Context) {
 		return
 	}
 
-	c.Header("Access-Control-Allow-Origin", "*")
+	// c.Header("Access-Control-Allow-Origin", "*")
+	setAccessControlHeader(c)
 
 	subjects := strings.Split(subjectsString, "~")
 
@@ -77,7 +78,8 @@ func GetShorten(c *gin.Context) {
 
 func GetShortened(c *gin.Context) {
 
-	c.Header("Access-Control-Allow-Origin", "*")
+	// c.Header("Access-Control-Allow-Origin", "*")
+	setAccessControlHeader(c)
 
 	var short string = c.Param("shortened")
 
@@ -94,6 +96,11 @@ func GetShortened(c *gin.Context) {
 }
 
 func GetCourses(c *gin.Context) {
+	setAccessControlHeader(c)
 	c.File("./static/cal_courses.json")
 	c.Status(200)
+}
+
+func setAccessControlHeader(c *gin.Context) {
+	c.Header("Access-Control-Allow-Origin", "*")
 }
