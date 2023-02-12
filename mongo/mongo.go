@@ -21,9 +21,9 @@ import (
 
 var Cli *mongo.Client = connection()
 
-var Db *mongo.Database = Cli.Database("usi-calendar-development")
+var Db *mongo.Database
 
-var ShortLinksColl *mongo.Collection = Db.Collection("short_links")
+var ShortLinksColl *mongo.Collection
 
 const maxAttempts int = 2000
 
@@ -35,14 +35,16 @@ type ShortLink struct {
 }
 
 func connection() *mongo.Client {
-	// Set client options
+
+	// Load .env file
 	err := godotenv.Load(".env")
 
 	if err != nil {
 		panic(err)
 	}
 
-	clientOptions := options.Client().ApplyURI(os.Getenv("MONGO_CONNECTION_STRING"))
+	clientOptions := options.Client()
+	clientOptions.ApplyURI(os.Getenv("MONGO_CONNECTION_STRING") + "&timeoutMS=5000")
 
 	// Connect to MongoDB
 	client, err := mongo.Connect(context.TODO(), clientOptions)
@@ -55,6 +57,10 @@ func connection() *mongo.Client {
 	if err := client.Ping(context.TODO(), nil); err != nil {
 		panic(err)
 	}
+
+	Db = client.Database("usi-calendar-development")
+
+	ShortLinksColl = Db.Collection("short_links")
 
 	fmt.Println("Connected to MongoDB!")
 

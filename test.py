@@ -14,6 +14,7 @@ COL = DB["short_links"]
 
 # URL = "https://api.usicalendar.me/"
 URL = "http://localhost:8080/"
+# URL = "https://dev.usicalendar.me/"
 
 
 def test_random_existing_should_not_add_entry():
