@@ -71,7 +71,7 @@ func GetShorten(c *gin.Context) {
 		return
 	}
 
-	var r string = "{\"shortened\":\"" + c.Request.Host + "s/" + *short + "\"}"
+	var r string = "{\"shortened\":\"" + c.Request.Host + "/s/" + *short + "\"}"
 
 	c.Data(200, ContentTypeJSON, []byte(r))
 }
