@@ -19,7 +19,6 @@ func main() {
 	r.GET("/info", routes.GetInfo)
 	r.GET("/shorten", routes.GetShorten)
 	r.GET("/s/:shortened", routes.GetShortened)
-	// r.GET("/courses", routes.GetCourses)
 	r.GET("/courses", routes.GetCalendars)
 	r.Run()
 }
