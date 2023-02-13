@@ -14,7 +14,8 @@ import (
 	cal "usicalendar/calendar"
 	"usicalendar/utils"
 
-	ics "github.com/JacopoD/golang-ical"
+	// ics "github.com/JacopoD/golang-ical"
+	ics "github.com/arran4/golang-ical"
 
 	"github.com/joho/godotenv"
 )

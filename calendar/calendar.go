@@ -5,7 +5,8 @@ import (
 	"net/http"
 	"strings"
 
-	ics "github.com/JacopoD/golang-ical"
+	// ics "github.com/JacopoD/golang-ical"
+	ics "github.com/arran4/golang-ical"
 )
 
 func simpleGetRequest(url *string) (*string, bool) {
