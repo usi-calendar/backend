@@ -5,6 +5,7 @@ import random
 import os
 from dotenv import load_dotenv
 import json
+from tqdm import tqdm
 
 load_dotenv()
 
@@ -12,10 +13,7 @@ CLIENT = pymongo.MongoClient(os.getenv("MONGO_CONNECTION_STRING"))
 DB = CLIENT[os.getenv("MONGO_DB_NAME")]
 COL = DB["short_links"]
 
-URL = "https://api.usicalendar.me/"
-# URL = "http://localhost:8080/"
-# URL = "https://dev.usicalendar.me/"
-
+URL = os.getenv("TEST_URL")
 
 def test_random_existing_should_not_add_entry():
     print("[INFO] Make sure the no external connections are allowed during testing")
@@ -171,7 +169,7 @@ def test_complete_process():
     return True
 
 def test_complete_process_n(times):
-    for i in range(times):
+    for i in trange(times):
         if test_complete_process() == -1:
             return -1
 
@@ -248,7 +246,7 @@ def main():
     assert test_random_existing_should_not_add_entry() != -1
     assert test_non_existing_shortened() != -1
     assert test_shorten_new() != -1
-    # assert test_info_all_calendars() != -1
+    assert test_info_all_calendars() != -1
     assert test_shorten_route() == 1
     assert test_s_route() == 1
     assert test_complete_process_n(100) != -1
