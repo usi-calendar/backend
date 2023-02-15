@@ -12,8 +12,8 @@ CLIENT = pymongo.MongoClient(os.getenv("MONGO_CONNECTION_STRING"))
 DB = CLIENT[os.getenv("MONGO_DB_NAME")]
 COL = DB["short_links"]
 
-# URL = "https://api.usicalendar.me/"
-URL = "http://localhost:8080/"
+URL = "https://api.usicalendar.me/"
+# URL = "http://localhost:8080/"
 # URL = "https://dev.usicalendar.me/"
 
 
@@ -96,11 +96,13 @@ def test_info_all_calendars():
 
     FILE_COURSES = "cal_courses.json"
     
-    f = open(os.getcwd() + '/static/' + FILE_COURSES)
-    data = json.load(f)
-    f.close()
+    res = requests.get(f"{URL}courses")
+    assert res.status_code == 200
+    data = json.loads(res.text)
+
+    assert data["cals"] != None
     
-    print(f"[LOG] Testing all links in {FILE_COURSES}\n")
+    print(f"[LOG] Testing all {len(data['cals'])} links in {FILE_COURSES}\n")
     total = len(data["cals"]) - 1
 
     for i, link in enumerate(data["cals"]):
@@ -115,57 +117,56 @@ def test_info_all_calendars():
 def test_complete_process():
 
     print(f"[LOG] Testing complete process randomly")
+    short_alphanum = None
+    course_url = None
+    try: 
+        res = requests.get(f"{URL}courses")
+        assert res.status_code == 200
+        data = json.loads(res.text)
 
-    res = requests.get(f"{URL}courses")
-    assert res.status_code == 200
-    data = json.loads(res.text)
+        course_url = data["cals"][random.randint(0, len(data["cals"])-1)]
 
-    course_url = data["cals"][random.randint(0, len(data["cals"])-1)]
+        res = requests.get(f"{URL}info?url={course_url}")
+        if res.status_code != 200:
+            print(f"[ERROR] test_complete_process: {URL}info?url={course_url}")
+            return -1
 
-    res = requests.get(f"{URL}info?url={course_url}")
-    if res.status_code != 200:
-        print(f"[ERROR] test_complete_process: {URL}info?url={course_url}")
+        res = res.text
+
+        subjects = json.loads(res)["courses"]
+
+        choice = [random.randint(0,len(subjects)-1) for _ in range(random.randint(1,len(subjects)+2))]
+
+        f = ""
+        for i, c in enumerate(choice):
+            s = subjects[c]
+            f += s
+            if i != len(choice) -1:
+                f += "~"
+
+        res = requests.get(f"{URL}shorten?url={course_url}&courses={f}")
+
+        if res.status_code != 200:
+            print(f"[ERROR] test_complete_process: {URL}shorten?url={course_url}&courses={f}")
+            print(f, choice, subjects)
+            return -1
+
+        short_alphanum = json.loads(res.text)["shortened"].split("/")[-1]
+
+        if short_alphanum == "":
+            print(f"[ERROR] test_complete_process: short_alphanum is empty")
+            return -1
+
+        res = requests.get(f"{URL}s/{short_alphanum}").status_code
+        if res != 200:
+            print(f"[ERROR] test_complete_process: {short_alphanum} is not in DB")
+            return -1
+
+        COL.delete_one({"short_url":short_alphanum})
+    except Exception as e:
+        print(f"[ERROR] Exception with course:{course_url}| alpanum:{short_alphanum}|")
+        print(e)
         return -1
-
-    res = res.text
-
-    subjects = json.loads(res)["courses"]
-
-    choice = [random.randint(0,len(subjects)-1) for _ in range(random.randint(1,len(subjects)+2))]
-
-    f = ""
-    for i, c in enumerate(choice):
-        s = subjects[c]
-        f += s
-        if i != len(choice) -1:
-            f += "~"
-
-    res = requests.get(f"{URL}shorten?url={course_url}&courses={f}")
-
-    if res.status_code != 200:
-        print(f"[ERROR] test_complete_process: {URL}shorten?url={course_url}&courses={f}")
-        print(f, choice, subjects)
-        return -1
-
-    short_alphanum = json.loads(res.text)["shortened"].split("/")[-1]
-
-    if short_alphanum == "":
-        print(f"[ERROR] test_complete_process: short_alphanum is empty")
-        return -1
-
-    # doc = COL.find_one({"short_url":short_alphanum})
-
-    # if doc is None:
-    #     print(f"[ERROR] test_complete_process: {short_alphanum} is not in DB")
-    #     return -1
-
-    res = requests.get(f"{URL}s/{short_alphanum}").status_code
-    if res != 200:
-        print(f"[ERROR] test_complete_process: {short_alphanum} is not in DB")
-        return -1
-
-    # COL.delete_one({"_id":doc["_id"]})
-    
 
     return True
 
