@@ -142,7 +142,7 @@ func Shorten(url *string, filter *[]string) *string {
 		bson.D{{Key: "url", Value: *url}, {Key: "courses", Value: *filter}, {Key: "short_url", Value: alphanum}})
 
 	// && res.InsertedID != nil USELESS check
-	if err != nil && res.InsertedID != nil {
+	if err != nil || res.InsertedID == nil {
 		return nil
 	}
 

@@ -37,7 +37,7 @@ func GetInfo(c *gin.Context) {
 	var r string = "{\"courses\": ["
 	var i int = 0
 	var last int = len(*subjects) - 1
-	for key, _ := range *subjects {
+	for key := range *subjects {
 		r += "\"" + key + "\""
 		if i != last {
 			r += ","
