@@ -103,8 +103,8 @@ def test_info_all_calendars():
     print(f"[LOG] Testing all {len(data['cals'])} links in {FILE_COURSES}\n")
     total = len(data["cals"]) - 1
 
-    for i, link in enumerate(data["cals"]):
-        print(f"{i}/{total}", end="\r")
+    for link in tqdm(data["cals"]):
+        # print(f"{i}/{total}", end="\r")
 
         res = requests.get(f"{URL}info?url={link}")
         assert res.status_code == 200
@@ -114,7 +114,7 @@ def test_info_all_calendars():
 
 def test_complete_process():
 
-    print(f"[LOG] Testing complete process randomly")
+    # print(f"[LOG] Testing complete process randomly")
     short_alphanum = None
     course_url = None
     try: 
@@ -169,7 +169,7 @@ def test_complete_process():
     return True
 
 def test_complete_process_n(times):
-    for i in trange(times):
+    for i in tqdm(range(times)):
         if test_complete_process() == -1:
             return -1
 
@@ -186,7 +186,7 @@ def test_shorten_route():
     res = requests.get(f"{URL}shorten?url=http://search.usi.ch/&courses=dsadsa~tttyhhh")
     assert res.status_code == 400
 
-    course_url = "https://search.usi.ch/it/offerte-formative/77/master-in-storia-e-teoria-dellarte-e-dellarchitettura-120-ects/piano-orari/53/1/ics"
+    course_url = "https://search.usi.ch/it/offerte-formative/79/master-in-medicina/piano-orari/54/1/ics"
 
     res = requests.get(f"{URL}shorten?url={course_url}&courses=dsadsa~tttyhhh")
     assert res.status_code == 400
