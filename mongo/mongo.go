@@ -100,6 +100,11 @@ func Shorten(url *string, filter *[]string) *string {
 	for _, f := range *filter {
 		if (*subjects)[f] != 1 {
 			return nil
+		} else {
+			if (*subjects)[f] > 1 {
+				return nil
+			}
+			(*subjects)[f]++
 		}
 	}
 
