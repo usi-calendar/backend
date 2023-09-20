@@ -26,6 +26,8 @@ var Db *mongo.Database
 
 var ShortLinksColl *mongo.Collection
 
+var ComplexShortLinksColl *mongo.Collection
+
 const maxAttempts int = 2000
 
 type ShortLink struct {
@@ -39,6 +41,15 @@ type Courses struct {
 	ID         primitive.ObjectID `bson:"_id"`
 	DateAdded  primitive.DateTime `bson:"dateAdded,omitempty"`
 	DataString string             `bson:"data,omitempty"`
+}
+
+type ComplexShortLink struct {
+	ID              primitive.ObjectID `bson:"_id"`
+	HasBaseCalendar bool               `bson:"has_base_calendar,omitempty"`
+	Url             string             `bson:"url"`
+	Courses         []string           `bson:"base_subjects"`
+	ExtraSubjects   []string           `bson:"extra_subjects"`
+	Short_url       string             `bson:"short_url,omitempty"`
 }
 
 func connection() *mongo.Client {
@@ -69,6 +80,8 @@ func connection() *mongo.Client {
 
 	ShortLinksColl = Db.Collection("short_links")
 
+	ComplexShortLinksColl = Db.Collection("complex_short_links")
+
 	fmt.Println("Connected to MongoDB!")
 
 	return client
@@ -87,6 +100,41 @@ func FromShortened(short *string) *ics.Calendar {
 	calendar = cal.FilterCalendar(calendar, subjects, &(*result).Courses)
 
 	return calendar
+}
+
+func FromComplexShortened(short *string) *string {
+	var result *ComplexShortLink
+	var err = ComplexShortLinksColl.FindOne(context.Background(), bson.D{{Key: "short_url", Value: *short}}).Decode(&result)
+
+	if err != nil {
+		return nil
+	}
+
+	var baseCalendar *ics.Calendar
+	var subjects *map[string]int
+	var rawBaseCalendar string
+
+	var l int = len(result.ExtraSubjects)
+
+	if result.HasBaseCalendar {
+		subjects, baseCalendar = cal.GetAllSubjects(&(*result).Url)
+		baseCalendar = cal.FilterCalendar(baseCalendar, subjects, &(*result).Courses)
+		rawBaseCalendar = baseCalendar.Serialize()
+		l++
+	}
+
+	rawCals := make([]*string, l)
+
+	if result.HasBaseCalendar {
+		rawCals[l-1] = &rawBaseCalendar
+	}
+
+	for i, extra_subject := range result.ExtraSubjects {
+		raw := cal.GetSubjCalFromIdx(&extra_subject)
+		rawCals[i] = raw
+	}
+
+	return cal.MergeRawCalendars(rawCals)
 }
 
 func Shorten(url *string, filter *[]string) *string {
@@ -145,6 +193,87 @@ func Shorten(url *string, filter *[]string) *string {
 
 	res, err := ShortLinksColl.InsertOne(context.Background(),
 		bson.D{{Key: "url", Value: *url}, {Key: "courses", Value: *filter}, {Key: "short_url", Value: alphanum}})
+
+	// && res.InsertedID != nil USELESS check
+	if err != nil || res.InsertedID == nil {
+		return nil
+	}
+
+	return &alphanum
+}
+
+// hasBaseCalendar indicates whether the complex calendar is composed of:
+// True: a combination of a base course + subjects
+// False: just subjects
+func ShortenComplex(hasBaseCalendar bool, url *string, filter *[]string, extraSubjects *[]string) *string {
+	if len(*extraSubjects) == 0 {
+		return nil
+	}
+
+	if hasBaseCalendar {
+
+		if len(*filter) == 0 {
+			return nil
+		}
+
+		subjects, _ := cal.GetAllSubjects(url)
+
+		for _, f := range *filter {
+			if (*subjects)[f] != 1 {
+				return nil
+			} else {
+				if (*subjects)[f] > 1 {
+					return nil
+				}
+				(*subjects)[f]++
+			}
+		}
+
+		sort.Strings(*filter)
+
+	}
+
+	var result *ComplexShortLink
+	var err = ComplexShortLinksColl.FindOne(context.Background(),
+		bson.D{{Key: "has_base_calendar", Value: hasBaseCalendar},
+			{Key: "url", Value: *url},
+			{Key: "base_subjects", Value: *filter},
+			{Key: "extra_subjects", Value: *extraSubjects},
+		}).Decode(&result)
+
+	if err != nil && err != mongo.ErrNoDocuments {
+		// SOMETHING IS WRONG IF THIS HAPPENS
+		return nil
+	}
+	if err == nil {
+		fmt.Println("Already shortened")
+		return &result.Short_url
+	}
+
+	var i int
+	var alphanum string
+	for i = 0; i < maxAttempts+1; i++ {
+		alphanum = utils.RandStringBytesMaskImprSrcSB(16)
+		e := ComplexShortLinksColl.FindOne(context.Background(), bson.D{{Key: "short_url", Value: alphanum}}).Err()
+		if e != nil {
+			if e == mongo.ErrNoDocuments {
+				break
+			} else {
+				return nil
+			}
+		}
+	}
+
+	if i == maxAttempts {
+		return nil
+	}
+
+	res, err := ComplexShortLinksColl.InsertOne(context.Background(),
+		bson.D{{Key: "has_base_calendar", Value: hasBaseCalendar},
+			{Key: "url", Value: *url},
+			{Key: "base_subjects", Value: *filter},
+			{Key: "extra_subjects", Value: *extraSubjects},
+			{Key: "short_url", Value: alphanum}})
 
 	// && res.InsertedID != nil USELESS check
 	if err != nil || res.InsertedID == nil {

@@ -142,12 +142,19 @@ def test_complete_process():
             if i != len(choice) -1:
                 f += "~"
 
+        expected_status = 200
+        if len(choice) > len(set(choice)):
+            expected_status = 400
+
         res = requests.get(f"{URL}shorten?url={course_url}&courses={f}")
 
-        if res.status_code != 200:
+        if res.status_code != expected_status:
             print(f"[ERROR] test_complete_process: {URL}shorten?url={course_url}&courses={f}")
             print(f, choice, subjects)
             return -1
+        
+        if expected_status == 400:
+            return
 
         short_alphanum = json.loads(res.text)["shortened"].split("/")[-1]
 

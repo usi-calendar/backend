@@ -44,4 +44,5 @@ require (
 
 // replace github.com/arran4/golang-ical => github.com/JacopoD/golang-ical v0.0.0-20230210232535-8a5798e14ed2
 
-replace github.com/arran4/golang-ical => github.com/JacopoD/golang-ical v0.0.0-20230213111230-07692a3cabaa
+// replace github.com/arran4/golang-ical => github.com/JacopoD/golang-ical v0.0.0-20230213111230-07692a3cabaa
+replace github.com/arran4/golang-ical => /Users/jdv/Documents/usi-calendar/golang-ical

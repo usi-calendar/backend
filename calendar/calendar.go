@@ -1,6 +1,8 @@
 package cal
 
 import (
+	"bufio"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -107,5 +109,77 @@ func FilterCalendar(cal *ics.Calendar, oldMap *map[string]int, filter *[]string)
 
 	(*cal).Components = newComponents
 
+	return cal
+}
+
+func MergeRawCalendars(rawCals []*string) *string {
+	var builder strings.Builder
+	builder.WriteString("BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:USI Search\nX-WR-CALNAME:Custom USI Calendar - usicalendar.me\nX-WR-CALDESC:Custom USI Calendar - usicalendar.me\n")
+	for _, cal := range rawCals {
+		if cal == nil {
+			continue
+		}
+		strippedRawCal := stripRawCal(cal)
+
+		if strippedRawCal == nil {
+			continue
+		}
+
+		builder.WriteString(*strippedRawCal)
+	}
+	builder.WriteString("END:VCALENDAR")
+	var result string = builder.String()
+
+	return &result
+}
+
+func stripRawCal(rawCal *string) *string {
+	// Create a scanner to read the input
+	scanner := bufio.NewScanner(strings.NewReader(*rawCal))
+
+	// Initialize a flag to track if "BEGIN:VEVENT" is found
+	foundBegin := false
+
+	// Create a buffer to store the result
+	var result strings.Builder
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		if !foundBegin {
+			if line == "BEGIN:VEVENT" {
+				foundBegin = true
+				result.WriteString(line)
+				result.WriteString("\n")
+			}
+		} else {
+			// Append the line to the result
+			if line == "END:VCALENDAR" {
+				break
+			}
+			result.WriteString(line)
+			result.WriteString("\n")
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		fmt.Println("Error:", err)
+		return nil
+	}
+
+	if !foundBegin {
+		return nil
+	}
+
+	// Get the result as a string and print it
+	outputStr := result.String()
+	return &outputStr
+}
+
+func GetSubjCalFromIdx(idx *string) *string {
+	var url string = "https://search.usi.ch/courses/" + *idx + "/*/schedules/ics"
+	cal, err := simpleGetRequest(&url)
+	if err {
+		return nil
+	}
 	return cal
 }
