@@ -39,7 +39,7 @@ type ShortLink struct {
 
 type Courses struct {
 	ID         primitive.ObjectID `bson:"_id"`
-	DateAdded  primitive.DateTime `bson:"dateAdded,omitempty"`
+	DateAdded  primitive.DateTime `bson:"date_added,omitempty"`
 	DataString string             `bson:"data,omitempty"`
 }
 
@@ -284,9 +284,9 @@ func ShortenComplex(hasBaseCalendar bool, url *string, filter *[]string, extraSu
 }
 
 func LatestCourses() *string {
-	coursesColl := Db.Collection("calendars")
+	coursesColl := Db.Collection("courses")
 	findOptions := options.Find()
-	findOptions.SetSort(bson.D{{Key: "dateAdded", Value: -1}}).SetLimit(1)
+	findOptions.SetSort(bson.D{{Key: "date_added", Value: -1}}).SetLimit(1)
 
 	cursor, err := coursesColl.Find(context.Background(), bson.D{}, findOptions)
 
