@@ -7,4 +7,6 @@
 .env
 ./static/cal_courses.json
 
+usicalendar
+
 .DS_Store
