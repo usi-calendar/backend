@@ -17,7 +17,7 @@ const (
 	ContentTypeCalendar = "text/calendar"
 )
 
-func GetInfo(c *gin.Context) {
+func GetInfoFromUrl(c *gin.Context) {
 
 	var url string = c.Query("url")
 
@@ -49,8 +49,37 @@ func GetInfo(c *gin.Context) {
 	i = 0
 	var last int = len(*subjectsMap) - 1
 	for key := range *subjectsMap {
-		fmt.Println(subjectsNames[i])
+		// fmt.Println(subjectsNames[i])
 		r += `["` + key + `","` + subjectsNames[i] + `"]`
+		if i != last {
+			r += ","
+		}
+		i++
+	}
+	r += "]}"
+
+	c.Data(200, ContentTypeJSON, []byte(r))
+}
+
+func GetInfoFromId(c *gin.Context) {
+
+	var idss string = c.Query("ids")
+
+	if idss == "" {
+		c.Status(400)
+		return
+	}
+
+	ids := strings.Split(idss, "~")
+
+	setAccessControlHeader(c)
+
+	subjectsNames := mongo.SubjIdToName(ids)
+
+	var r string = "{\"courses\": ["
+	var last int = len(ids) - 1
+	for i, el := range ids {
+		r += `["` + el + `","` + subjectsNames[i] + `"]`
 		if i != last {
 			r += ","
 		}

@@ -16,7 +16,8 @@ func main() {
 
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.Default()
-	r.GET("/info", routes.GetInfo)
+	r.GET("/urlinfo", routes.GetInfoFromUrl)
+	r.GET("/idinfo", routes.GetInfoFromId)
 	r.GET("/shorten", routes.GetShorten)
 	r.GET("/cshorten", routes.GetComplexShorten)
 	r.GET("/s/:shortened", routes.GetShortened)
