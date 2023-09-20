@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strings"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -28,6 +29,8 @@ var ShortLinksColl *mongo.Collection
 
 var ComplexShortLinksColl *mongo.Collection
 
+var SubjectsColl *mongo.Collection
+
 const maxAttempts int = 2000
 
 type ShortLink struct {
@@ -50,6 +53,12 @@ type ComplexShortLink struct {
 	Courses         []string           `bson:"base_subjects"`
 	ExtraSubjects   []string           `bson:"extra_subjects"`
 	Short_url       string             `bson:"short_url,omitempty"`
+}
+
+type Subject struct {
+	ID       primitive.ObjectID `bson:"_id"`
+	SubjId   string             `bson:"subj_id,omitempty"`
+	SubjName string             `bson:"subj_name,omitempty"`
 }
 
 func connection() *mongo.Client {
@@ -81,6 +90,8 @@ func connection() *mongo.Client {
 	ShortLinksColl = Db.Collection("short_links")
 
 	ComplexShortLinksColl = Db.Collection("complex_short_links")
+
+	SubjectsColl = Db.Collection("subjects")
 
 	fmt.Println("Connected to MongoDB!")
 
@@ -296,7 +307,7 @@ func LatestCourses() *string {
 
 	// There can only be one element in the cursor.
 	var result Courses
-	for cursor.Next(context.TODO()) {
+	for cursor.Next(context.Background()) {
 
 		if err := cursor.Decode(&result); err != nil {
 
@@ -308,4 +319,29 @@ func LatestCourses() *string {
 	}
 
 	return &result.DataString
+}
+
+func SubjIdToName(ids []string) []string {
+	fmt.Println(ids)
+	filter := bson.M{"subj_id": bson.M{"$in": ids}}
+	cursor, err := SubjectsColl.Find(context.Background(), filter)
+
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+
+	var result Subject
+
+	subjectNames := make([]string, len(ids))
+	var i int = 0
+	for cursor.Next(context.Background()) {
+		if err := cursor.Decode(&result); err != nil {
+			return nil
+		}
+		subjectNames[i] = strings.Clone(result.SubjName)
+		i++
+	}
+
+	return subjectNames
 }

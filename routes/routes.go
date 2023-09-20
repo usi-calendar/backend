@@ -28,18 +28,29 @@ func GetInfo(c *gin.Context) {
 
 	setAccessControlHeader(c)
 
-	subjects, _ := cal.GetAllSubjects(&url)
+	subjectsMap, _ := cal.GetAllSubjects(&url)
 
-	if subjects == nil {
+	if subjectsMap == nil {
 		c.Status(500)
 		return
 	}
 
-	var r string = "{\"courses\": ["
 	var i int = 0
-	var last int = len(*subjects) - 1
-	for key := range *subjects {
-		r += "\"" + key + "\""
+	subjects := make([]string, len(*subjectsMap))
+
+	for key := range *subjectsMap {
+		subjects[i] = strings.Clone(key)
+		i++
+	}
+	subjectsNames := mongo.SubjIdToName(subjects)
+	subjects = nil
+
+	var r string = "{\"courses\": ["
+	i = 0
+	var last int = len(*subjectsMap) - 1
+	for key := range *subjectsMap {
+		fmt.Println(subjectsNames[i])
+		r += `["` + key + `","` + subjectsNames[i] + `"]`
 		if i != last {
 			r += ","
 		}
