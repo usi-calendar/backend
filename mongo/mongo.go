@@ -31,6 +31,10 @@ var ComplexShortLinksColl *mongo.Collection
 
 var SubjectsColl *mongo.Collection
 
+var SubjectsAndCoursesColl *mongo.Collection
+
+var SubjectsAndCoursesRawColl *mongo.Collection
+
 const maxAttempts int = 2000
 
 type ShortLink struct {
@@ -40,7 +44,7 @@ type ShortLink struct {
 	Short_url string             `bson:"short_url,omitempty"`
 }
 
-type Courses struct {
+type RawData struct {
 	ID         primitive.ObjectID `bson:"_id"`
 	DateAdded  primitive.DateTime `bson:"date_added,omitempty"`
 	DataString string             `bson:"data,omitempty"`
@@ -59,6 +63,13 @@ type Subject struct {
 	ID       primitive.ObjectID `bson:"_id"`
 	SubjId   string             `bson:"subj_id,omitempty"`
 	SubjName string             `bson:"subj_name,omitempty"`
+}
+
+type SubjectsAndCourse struct {
+	ID         primitive.ObjectID `bson:"_id"`
+	CID        string             `bson:"id,omitempty"`
+	CourseName string             `bson:"course_name,omitempty"`
+	Subjects   []string           `bson:"subjects,omitempty"`
 }
 
 func connection() *mongo.Client {
@@ -92,6 +103,10 @@ func connection() *mongo.Client {
 	ComplexShortLinksColl = Db.Collection("complex_short_links")
 
 	SubjectsColl = Db.Collection("subjects")
+
+	SubjectsAndCoursesColl = Db.Collection("subjects_and_courses")
+
+	SubjectsAndCoursesRawColl = Db.Collection("subjects_and_courses_raw")
 
 	fmt.Println("Connected to MongoDB!")
 
@@ -306,7 +321,7 @@ func LatestCourses() *string {
 	}
 
 	// There can only be one element in the cursor.
-	var result Courses
+	var result RawData
 	for cursor.Next(context.Background()) {
 
 		if err := cursor.Decode(&result); err != nil {
@@ -344,4 +359,30 @@ func SubjIdToName(ids []string) []string {
 	}
 
 	return subjectNames
+}
+
+func InfoCourse(id *string) (bool, *string, *string, []string) {
+	var result SubjectsAndCourse
+	err := SubjectsAndCoursesColl.FindOne(context.Background(), bson.D{{Key: "id", Value: *id}}).Decode(&result)
+
+	if err != nil {
+		return true, nil, nil, nil
+	}
+
+	return false, &result.CID, &result.CourseName, result.Subjects
+
+}
+
+func InfoAllCourses() *string {
+	var result RawData
+	findOptions := options.FindOne()
+	findOptions.SetSort(bson.D{{Key: "date_added", Value: -1}})
+
+	err := SubjectsAndCoursesRawColl.FindOne(context.Background(), bson.D{}, findOptions).Decode(&result)
+
+	if err != nil {
+		return nil
+	}
+
+	return &result.DataString
 }

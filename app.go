@@ -22,5 +22,6 @@ func main() {
 	r.GET("/s/:shortened", routes.GetShortened)
 	r.GET("/cs/:shortened", routes.GetComplexShortened)
 	r.GET("/courses", routes.GetCalendars)
+	r.GET("/extcourses", routes.GetAllCourses)
 	r.Run()
 }

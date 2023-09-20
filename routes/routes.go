@@ -179,6 +179,18 @@ func GetCalendars(c *gin.Context) {
 	c.Data(200, ContentTypeJSON, []byte(*data))
 }
 
+func GetAllCourses(c *gin.Context) {
+	setAccessControlHeader(c)
+	var data *string = mongo.InfoAllCourses()
+
+	if data == nil {
+		c.Status(500)
+		return
+	}
+
+	c.Data(200, ContentTypeJSON, []byte(*data))
+}
+
 func setAccessControlHeader(c *gin.Context) {
 	c.Header("Access-Control-Allow-Origin", "*")
 }
