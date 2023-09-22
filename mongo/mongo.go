@@ -40,7 +40,7 @@ const maxAttempts int = 2000
 type ShortLink struct {
 	ID        primitive.ObjectID `bson:"_id"`
 	Url       string             `bson:"url,omitempty"`
-	Courses   []string           `bson:"courses,omitempty"`
+	Subjects  []string           `bson:"subjects,omitempty"`
 	Short_url string             `bson:"short_url,omitempty"`
 }
 
@@ -54,7 +54,7 @@ type ComplexShortLink struct {
 	ID              primitive.ObjectID `bson:"_id"`
 	HasBaseCalendar bool               `bson:"has_base_calendar,omitempty"`
 	Url             string             `bson:"url"`
-	Courses         []string           `bson:"base_subjects"`
+	BaseSubjects    []string           `bson:"base_subjects"`
 	ExtraSubjects   []string           `bson:"extra_subjects"`
 	Short_url       string             `bson:"short_url,omitempty"`
 }
@@ -123,7 +123,7 @@ func FromShortened(short *string) *ics.Calendar {
 
 	subjects, calendar := cal.GetAllSubjects(&(*result).Url)
 
-	calendar = cal.FilterCalendar(calendar, subjects, &(*result).Courses)
+	calendar = cal.FilterCalendar(calendar, subjects, &(*result).Subjects)
 
 	return calendar
 }
@@ -144,7 +144,7 @@ func FromComplexShortened(short *string) *string {
 
 	if result.HasBaseCalendar {
 		subjects, baseCalendar = cal.GetAllSubjects(&(*result).Url)
-		baseCalendar = cal.FilterCalendar(baseCalendar, subjects, &(*result).Courses)
+		baseCalendar = cal.FilterCalendar(baseCalendar, subjects, &(*result).BaseSubjects)
 		rawBaseCalendar = baseCalendar.Serialize()
 		l++
 	}
@@ -188,7 +188,7 @@ func Shorten(url *string, filter *[]string) *string {
 
 	var result *ShortLink
 	var err = ShortLinksColl.FindOne(context.Background(),
-		bson.D{{Key: "url", Value: *url}, {Key: "courses", Value: *filter}}).Decode(&result)
+		bson.D{{Key: "url", Value: *url}, {Key: "subjects", Value: *filter}}).Decode(&result)
 
 	if err != nil && err != mongo.ErrNoDocuments {
 		// SOMETHING IS WRONG IF THIS HAPPENS
@@ -218,7 +218,7 @@ func Shorten(url *string, filter *[]string) *string {
 	}
 
 	res, err := ShortLinksColl.InsertOne(context.Background(),
-		bson.D{{Key: "url", Value: *url}, {Key: "courses", Value: *filter}, {Key: "short_url", Value: alphanum}})
+		bson.D{{Key: "url", Value: *url}, {Key: "subjects", Value: *filter}, {Key: "short_url", Value: alphanum}})
 
 	// && res.InsertedID != nil USELESS check
 	if err != nil || res.InsertedID == nil {
@@ -338,8 +338,22 @@ func LatestCourses() *string {
 
 func SubjIdToName(ids []string) []string {
 	fmt.Println(ids)
-	filter := bson.M{"subj_id": bson.M{"$in": ids}}
-	cursor, err := SubjectsColl.Find(context.Background(), filter)
+	// filter := bson.M{"subj_id": bson.M{"$in": ids}}
+	// cursor, err := SubjectsColl.Find(context.Background(), filter)
+
+	pipeline := mongo.Pipeline{
+		{
+			{"$match", bson.M{"subj_id": bson.M{"$in": ids}}},
+		},
+		{
+			{"$addFields", bson.M{"__order": bson.M{"$indexOfArray": []interface{}{ids, "$subj_id"}}}},
+		},
+		{
+			{"$sort", bson.M{"__order": 1}},
+		},
+	}
+
+	cursor, err := SubjectsColl.Aggregate(context.Background(), pipeline)
 
 	if err != nil {
 		fmt.Println(err)
@@ -357,6 +371,8 @@ func SubjIdToName(ids []string) []string {
 		subjectNames[i] = strings.Clone(result.SubjName)
 		i++
 	}
+
+	fmt.Println(subjectNames)
 
 	return subjectNames
 }

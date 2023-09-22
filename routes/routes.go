@@ -43,14 +43,13 @@ func GetInfoFromUrl(c *gin.Context) {
 		i++
 	}
 	subjectsNames := mongo.SubjIdToName(subjects)
-	subjects = nil
+	subjectsMap = nil
 
 	var r string = "{\"courses\": ["
 	i = 0
-	var last int = len(*subjectsMap) - 1
-	for key := range *subjectsMap {
-		// fmt.Println(subjectsNames[i])
-		r += `["` + key + `","` + subjectsNames[i] + `"]`
+	var last int = len(subjects) - 1
+	for _, subj := range subjects {
+		r += `["` + subj + `","` + subjectsNames[i] + `"]`
 		if i != last {
 			r += ","
 		}

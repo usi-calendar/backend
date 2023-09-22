@@ -6,6 +6,7 @@ import os
 from dotenv import load_dotenv
 import json
 from tqdm import tqdm
+from ics import Calendar
 
 load_dotenv()
 
@@ -21,7 +22,7 @@ def test_random_existing_should_not_add_entry():
         print("[WARNING] The database contains duplicates (more than one shortened link for the same combination of url and courses")
     doc = COL.aggregate([{ "$sample": { "size": 1 } }]).next()
     count1 = COL.count_documents({})
-    courses = "~".join(doc["courses"])
+    courses = "~".join(doc["subjects"])
     u = doc["url"]
     r = requests.get(f"{URL}shorten?courses={courses}&url={u}")
     if COL.count_documents({}) > count1 and check_for_duplicates() is not None:
@@ -44,24 +45,26 @@ def test_shorten_new():
     print("[LOG] Deleting one random document")
     doc1 = COL.aggregate([{ "$sample": { "size": 1 } }]).next()
     u = doc1["url"]
-    courses = "~".join(doc1["courses"])
+    courses = "~".join(doc1["subjects"])
     COL.delete_one({"_id":doc1["_id"]})
 
     print("[LOG] Requesting to shorten deleted document")
-    requests.get(f"{URL}shorten?url={u}&courses={courses}")
+    res = requests.get(f"{URL}shorten?url={u}&subjects={courses}")
 
-    doc2 = COL.find_one({"url":doc1["url"],"courses":doc1["courses"]})
+    assert res.ok
+
+    doc2 = COL.find_one({"url":doc1["url"],"subjects":doc1["subjects"]})
 
     if doc2 is None:
         print("[ERROR] No new document was created, inserting old document back")
-        COL.insert_one({"_id":doc1["_id"], "url":doc1["url"],"courses":doc1["courses"], "short_url":doc1["short_url"]})
+        COL.insert_one({"_id":doc1["_id"], "url":doc1["url"],"subjects":doc1["subjects"], "short_url":doc1["short_url"]})
         return -1
 
     print("[LOG] Adding deleted document back and removing test document")
     
     COL.delete_one({"_id":doc2["_id"]})
 
-    COL.insert_one({"_id":doc1["_id"], "url":doc1["url"],"courses":doc1["courses"], "short_url":doc1["short_url"]})
+    COL.insert_one({"_id":doc1["_id"], "url":doc1["url"],"subjects":doc1["subjects"], "short_url":doc1["short_url"]})
 
     print("[LOG] Test passed")
 
@@ -69,7 +72,7 @@ def check_for_duplicates():
     print("[LOG] Checking for duplicates...")
     all = COL.find()
     for doc in all:
-        r = COL.find_one({"url":doc["url"],"courses":doc["courses"], "_id": {"$ne":doc["_id"]}})
+        r = COL.find_one({"url":doc["url"],"subjects":doc["subjects"], "_id": {"$ne":doc["_id"]}})
         if r is not None:
             # id1 = str(r["_id"])
             print("[ERROR] Found duplicate of "+ str(r["_id"]) + " == " + str(doc["_id"]))
@@ -80,19 +83,19 @@ def check_for_duplicates():
 def test_info_all_calendars():
 
 
-    res = requests.get(f"{URL}info")
+    res = requests.get(f"{URL}urlinfo")
     assert res.status_code == 400
 
-    res = requests.get(f"{URL}info?url=")
+    res = requests.get(f"{URL}urlinfo?url=")
     assert res.status_code == 400
     
-    res = requests.get(f"{URL}info?url=http://aaa.com")
+    res = requests.get(f"{URL}urlinfo?url=http://aaa.com")
     assert res.status_code == 400
 
-    res = requests.get(f"{URL}info?url=https://aaa.com")
+    res = requests.get(f"{URL}urlinfo?url=https://aaa.com")
     assert res.status_code == 400
 
-    FILE_COURSES = "cal_courses.json"
+    # FILE_COURSES = "cal_courses.json"
     
     res = requests.get(f"{URL}courses")
     assert res.status_code == 200
@@ -100,13 +103,13 @@ def test_info_all_calendars():
 
     assert data["cals"] != None
     
-    print(f"[LOG] Testing all {len(data['cals'])} links in {FILE_COURSES}\n")
+    print(f"[LOG] Testing all {len(data['cals'])} links\n")
     total = len(data["cals"]) - 1
 
     for link in tqdm(data["cals"]):
         # print(f"{i}/{total}", end="\r")
 
-        res = requests.get(f"{URL}info?url={link}")
+        res = requests.get(f"{URL}urlinfo?url={link}")
         assert res.status_code == 200
 
     print("[LOG] Done!")
@@ -119,14 +122,14 @@ def test_complete_process():
     course_url = None
     try: 
         res = requests.get(f"{URL}courses")
-        assert res.status_code == 200
+        assert res.ok
         data = json.loads(res.text)
 
-        course_url = data["cals"][random.randint(0, len(data["cals"])-1)]
+        course_url = random.choice(data["cals"])
 
-        res = requests.get(f"{URL}info?url={course_url}")
+        res = requests.get(f"{URL}urlinfo?url={course_url}")
         if res.status_code != 200:
-            print(f"[ERROR] test_complete_process: {URL}info?url={course_url}")
+            print(f"[ERROR] test_complete_process: {URL}urlinfo?url={course_url}")
             return -1
 
         res = res.text
@@ -137,7 +140,7 @@ def test_complete_process():
 
         f = ""
         for i, c in enumerate(choice):
-            s = subjects[c]
+            s = subjects[c][0]
             f += s
             if i != len(choice) -1:
                 f += "~"
@@ -146,10 +149,10 @@ def test_complete_process():
         if len(choice) > len(set(choice)):
             expected_status = 400
 
-        res = requests.get(f"{URL}shorten?url={course_url}&courses={f}")
+        res = requests.get(f"{URL}shorten?url={course_url}&subjects={f}")
 
         if res.status_code != expected_status:
-            print(f"[ERROR] test_complete_process: {URL}shorten?url={course_url}&courses={f}")
+            print(f"[ERROR] test_complete_process: {URL}shorten?url={course_url}&subjects={f}")
             print(f, choice, subjects)
             return -1
         
@@ -187,31 +190,34 @@ def test_shorten_route():
     res = requests.get(f"{URL}shorten")
     assert res.status_code == 400
 
-    res = requests.get(f"{URL}shorten?url=&courses=")
+    res = requests.get(f"{URL}shorten?url=&subjects=")
     assert res.status_code == 400
 
-    res = requests.get(f"{URL}shorten?url=http://search.usi.ch/&courses=dsadsa~tttyhhh")
+    res = requests.get(f"{URL}shorten?url=http://search.usi.ch/&subjects=dsadsa~tttyhhh")
     assert res.status_code == 400
 
-    course_url = "https://search.usi.ch/it/offerte-formative/79/master-in-medicina/piano-orari/54/1/ics"
+    res = requests.get(f"{URL}courses")
+    assert res.ok
+    course_url = random.choice(json.loads(res.text)['cals'])
 
-    res = requests.get(f"{URL}shorten?url={course_url}&courses=dsadsa~tttyhhh")
+    res = requests.get(f"{URL}shorten?url={course_url}&subjects=dsadsa~tttyhhh")
     assert res.status_code == 400
 
-    res = requests.get(f"{URL}info?url={course_url}").text
-    subjects = json.loads(res)["courses"]
+    res = requests.get(f"{URL}urlinfo?url={course_url}")
+    assert res.ok
+    subjects = json.loads(res.text)["courses"]
 
     # No "~" is expected at the end of the course list
-    res = requests.get(f"{URL}shorten?url={course_url}&courses={subjects[0]}~")
+    res = requests.get(f"{URL}shorten?url={course_url}&subjects={subjects[0]}~")
     assert res.status_code == 400
     
     f = ""
     for i, s in enumerate(subjects):
-        f += s
+        f += s[0]
         if i != len(subjects) -1:
             f += "~"
     
-    res = requests.get(f"{URL}shorten?url={course_url}&courses={f}")
+    res = requests.get(f"{URL}shorten?url={course_url}&subjects={f}")
 
     assert res.status_code == 200
 
@@ -224,6 +230,8 @@ def test_shorten_route():
     assert doc
 
     COL.delete_one({"_id":doc["_id"]})
+
+    print("[LOG] Test passed")
 
     return True
 
@@ -245,8 +253,69 @@ def test_s_route():
     res = requests.get(f"{URL}s/{rnd_short_url}")
     assert res.status_code == 200
 
+    print("[LOG] Test passed")  
+
     return 1
 
+# Complex calendar testing
+
+
+def test_complex_cal_shorten():
+    res = requests.get(f"{URL}courses")
+    assert res.ok
+    coursesurls = json.loads(res.text)
+
+    ok = False
+
+    while not ok:
+        urlchoice = random.choice(coursesurls['cals'])
+        res = requests.get(f"{URL}urlinfo?url={urlchoice}")
+        assert res.ok
+
+        info = json.loads(res.text)
+
+        if len(info['courses']) > 2:
+            ok = True
+
+        print(urlchoice, res.text)
+
+        base_cal_subjs = random.sample(info['courses'], random.randint(1, len(info['courses'])))
+
+    base_cal_subjs = list(map(lambda x: x[0], base_cal_subjs))
+
+    res = requests.get(f"{URL}extcourses")
+    assert res.ok
+    all_subjs = json.loads(res.text)
+
+    all_subjs_selection = list(map(lambda x: x['subjects'],random.sample(all_subjs, random.randint(1,5))))
+
+    all_subjs_selection = list(map(lambda x: random.sample(x, random.randint(1, min(3, len(x)))), all_subjs_selection))
+
+    t = []
+
+    for a in all_subjs_selection:
+        for e in a:
+            t.append(e)
+
+    res = requests.get(f"{URL}cshorten?has_base_calendar=true&url={urlchoice}&subjects={array_to_string(base_cal_subjs)}&extra_subjects={array_to_string(t)}")
+    # print(res.status_code)
+    assert res.ok
+    # res = requests.get()
+    # c = Calendar()
+    return 1
+
+
+def test_complex_cal_shorten_wrapper(count):
+    for _ in range(count):
+        test_complex_cal_shorten()
+
+def array_to_string(ar):
+    f = ""
+    for i, s in enumerate(ar):
+        f += s
+        if i != len(ar) -1:
+            f += "~"
+    return f
 
 
 def main():
@@ -257,6 +326,7 @@ def main():
     assert test_shorten_route() == 1
     assert test_s_route() == 1
     assert test_complete_process_n(100) != -1
+    assert test_complex_cal_shorten_wrapper(10) == 1
 
 if __name__ == "__main__":
     main()
