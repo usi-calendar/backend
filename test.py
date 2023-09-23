@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 import json
 from tqdm import tqdm
 from ics import Calendar
+from datetime import datetime
 
 load_dotenv()
 
@@ -14,6 +15,8 @@ CLIENT = pymongo.MongoClient(os.getenv("MONGO_CONNECTION_STRING"))
 DB = CLIENT[os.getenv("MONGO_DB_NAME")]
 COL = DB["short_links"]
 COMPLEX_COL = DB["complex_short_links"]
+COURSE_CACHE_COL = DB["course_calendar_cache"]
+SUBJECT_CACHE_COL = DB["subject_calendar_cache"]
 
 URL = os.getenv("TEST_URL")
 
@@ -380,6 +383,54 @@ def array_to_string(ar):
     return f
 
 
+def test_course_cache():
+
+    print("[LOG] Testing course calendar cache")
+
+    doc1 = COURSE_CACHE_COL.aggregate([{ "$sample": { "size": 1 } }]).next()
+
+    COURSE_CACHE_COL.update_one({'_id':doc1['_id']},{ "$set": { "date_added":  976057200} })
+
+    assert COURSE_CACHE_COL.find_one({'_id':doc1['_id']})['date_added'] == 976057200
+
+    res = requests.get(f"{URL}shorten?url={doc1['url']}&subjects=dsanidua~dsdasdsa")
+
+    doc1_new = COURSE_CACHE_COL.find_one({'_id':doc1['_id']})
+
+    assert doc1_new['date_added'] > 976057200
+
+    print("[LOG] Test passed")
+
+    return 1
+
+
+def test_subject_cache():
+
+    print("[LOG] Testing subject calendar cache")
+
+    doc1 = SUBJECT_CACHE_COL.aggregate([{ "$sample": { "size": 1 } }]).next()
+
+    SUBJECT_CACHE_COL.update_one({'_id':doc1['_id']},{ "$set": { "date_added":  976057200} })
+
+    assert SUBJECT_CACHE_COL.find_one({'_id':doc1['_id']})['date_added'] == 976057200
+
+    res = requests.get(f"{URL}cshorten?has_base_calendar=false&url=&subjects=dsanidua~dsdasdsa&extra_subjects={doc1['id']}")
+    assert res.ok
+
+    short = json.loads(res.text)['shortened'].split('/')[-1]
+
+    requests.get(f'{URL}cs/{short}')
+    assert res.ok
+
+    doc1_new = SUBJECT_CACHE_COL.find_one({'_id':doc1['_id']})
+
+    assert doc1_new['date_added'] > 976057200
+
+    print("[LOG] Test passed")
+
+    return 1
+
+
 def main():
     assert test_random_existing_should_not_add_entry() != -1
     assert test_non_existing_shortened() != -1
@@ -388,7 +439,9 @@ def main():
     assert test_shorten_route() == 1
     assert test_s_route() == 1
     assert test_complete_process_n(100) != -1
-    assert test_complex_cal_shorten_wrapper(50) == 1
+    assert test_complex_cal_shorten_wrapper(100) == 1
+    assert test_course_cache() == 1
+    assert test_subject_cache() == 1
 
 if __name__ == "__main__":
     main()

@@ -124,17 +124,20 @@ func GetComplexShorten(c *gin.Context) {
 	var hasBaseCalendar string = c.Query("has_base_calendar")
 	var hbcbool bool = false
 
+	if hasBaseCalendar == "" || extraSubjectsString == "" {
+		c.Status(400)
+		return
+	}
+
 	if hasBaseCalendar == "true" {
 		if url == "" || !strings.HasPrefix(url, "https://search.usi.ch/") || subjectsString == "" {
 			c.Status(400)
 			return
 		}
 		hbcbool = true
-	}
-
-	if extraSubjectsString == "" {
-		c.Status(400)
-		return
+	} else {
+		url = ""
+		subjectsString = ""
 	}
 
 	setAccessControlHeader(c)

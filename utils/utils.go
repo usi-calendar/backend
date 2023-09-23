@@ -1,7 +1,9 @@
 package utils
 
 import (
+	"io"
 	"math/rand"
+	"net/http"
 	"strings"
 	"time"
 )
@@ -32,4 +34,28 @@ func RandStringBytesMaskImprSrcSB(n int) string {
 	}
 
 	return sb.String()
+}
+
+func SimpleGetRequest(url *string) (*string, bool) {
+
+	var resp *http.Response
+	var err error
+
+	resp, err = http.Get(*url)
+
+	if err != nil {
+		return nil, true
+	}
+
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+
+	if err != nil {
+		return nil, true
+	}
+
+	var stringBody string = string(body)
+
+	return &stringBody, false
 }

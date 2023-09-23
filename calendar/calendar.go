@@ -3,43 +3,22 @@ package cal
 import (
 	"bufio"
 	"fmt"
-	"io"
-	"net/http"
 	"strings"
 
 	// ics "github.com/JacopoD/golang-ical"
+	// mongo "usicalendar/mongo"
+	cache "usicalendar/cache"
+
 	ics "github.com/arran4/golang-ical"
 )
 
-func simpleGetRequest(url *string) (*string, bool) {
-
-	var resp *http.Response
-	var err error
-
-	resp, err = http.Get(*url)
-
-	if err != nil {
-		return nil, true
-	}
-
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-
-	if err != nil {
-		return nil, true
-	}
-
-	var stringBody string = string(body)
-
-	return &stringBody, false
-}
-
 func GetAllSubjects(url *string) (*map[string]int, *ics.Calendar) {
 
-	r, err := simpleGetRequest(url)
+	// r, err := utils.SimpleGetRequest(url)
 
-	if err {
+	r := cache.FetchCourseCalendar(url)
+
+	if r == nil {
 		// fmt.Println("Error")
 		return nil, nil
 	}
@@ -176,10 +155,8 @@ func stripRawCal(rawCal *string) *string {
 }
 
 func GetSubjCalFromIdx(idx *string) *string {
-	var url string = "https://search.usi.ch/courses/" + *idx + "/*/schedules/ics"
-	cal, err := simpleGetRequest(&url)
-	if err {
-		return nil
-	}
+	// var url string = "https://search.usi.ch/courses/" + *idx + "/*/schedules/ics"
+	// cal, err := utils.SimpleGetRequest(&url)
+	cal := cache.FetchSubjectCalendar(idx)
 	return cal
 }
