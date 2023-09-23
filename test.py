@@ -13,6 +13,7 @@ load_dotenv()
 CLIENT = pymongo.MongoClient(os.getenv("MONGO_CONNECTION_STRING"))
 DB = CLIENT[os.getenv("MONGO_DB_NAME")]
 COL = DB["short_links"]
+COMPLEX_COL = DB["complex_short_links"]
 
 URL = os.getenv("TEST_URL")
 
@@ -260,28 +261,46 @@ def test_s_route():
 # Complex calendar testing
 
 
+def remove_simple_from_db(id):
+    assert COL.delete_one({"short_url":id}).deleted_count == 1
+
+def remove_complex_from_db(id):
+    assert COMPLEX_COL.delete_one({"short_url":id}).deleted_count == 1
+
+
+
 def test_complex_cal_shorten():
-    res = requests.get(f"{URL}courses")
-    assert res.ok
-    coursesurls = json.loads(res.text)
 
-    ok = False
+    has_base_cal = random.randint(0,1)
 
-    while not ok:
-        urlchoice = random.choice(coursesurls['cals'])
-        res = requests.get(f"{URL}urlinfo?url={urlchoice}")
+    urlchoice = ""
+    base_cal_subjs = []
+
+    hbs = 'false'
+
+    if has_base_cal:
+
+        hbs = 'true'
+
+        res = requests.get(f"{URL}courses")
         assert res.ok
+        coursesurls = json.loads(res.text)
 
-        info = json.loads(res.text)
+        ok = False
 
-        if len(info['courses']) > 2:
-            ok = True
+        while not ok:
+            urlchoice = random.choice(coursesurls['cals'])
+            res = requests.get(f"{URL}urlinfo?url={urlchoice}")
+            assert res.ok
 
-        print(urlchoice, res.text)
+            info = json.loads(res.text)
+
+            if len(info['courses']) > 1:
+                ok = True
 
         base_cal_subjs = random.sample(info['courses'], random.randint(1, len(info['courses'])))
 
-    base_cal_subjs = list(map(lambda x: x[0], base_cal_subjs))
+        base_cal_subjs = list(map(lambda x: x[0], base_cal_subjs))
 
     res = requests.get(f"{URL}extcourses")
     assert res.ok
@@ -293,21 +312,64 @@ def test_complex_cal_shorten():
 
     t = []
 
+    cals = []
+
     for a in all_subjs_selection:
         for e in a:
             t.append(e)
+            res = requests.get(f"https://search.usi.ch/courses/{e}/*/schedules/ics")
+            assert res.ok
+            cals.append(Calendar(res.text))
 
-    res = requests.get(f"{URL}cshorten?has_base_calendar=true&url={urlchoice}&subjects={array_to_string(base_cal_subjs)}&extra_subjects={array_to_string(t)}")
-    # print(res.status_code)
+    if has_base_cal:
+        res = requests.get(f"{URL}shorten?url={urlchoice}&subjects={'~'.join(base_cal_subjs)}")
+        assert res.ok
+        base_id = json.loads(res.text)['shortened'].split('/')[-1]
+        res = requests.get(f"{URL}s/{base_id}")
+        assert res.ok
+        cals.append(Calendar(res.text))
+        
+
+    event_count = 0
+
+    for cal in cals:
+        event_count += len(cal.events)
+
+    res = requests.get(f"{URL}cshorten?has_base_calendar={hbs}&url={urlchoice}&subjects={array_to_string(base_cal_subjs)}&extra_subjects={array_to_string(t)}")
+    if len(set(t)) != len(t):
+        assert res.status_code == 400
+        if has_base_cal:
+            remove_simple_from_db(base_id)
+        return has_base_cal
+    else:
+        assert res.ok
+
+    id = json.loads(res.text)['shortened'].split('/')[-1]
+
+    res = requests.get(f"{URL}cs/{id}")
+
     assert res.ok
-    # res = requests.get()
-    # c = Calendar()
-    return 1
+
+    full_cal = Calendar(res.text)
+
+    assert len(full_cal.events) == event_count
+
+    if has_base_cal:
+        remove_simple_from_db(base_id)
+    remove_complex_from_db(id)
+
+    return has_base_cal
+
 
 
 def test_complex_cal_shorten_wrapper(count):
-    for _ in range(count):
-        test_complex_cal_shorten()
+    print(f"[LOG] Generating {count} complex calendars")
+    with_base_count = 0
+    for _ in tqdm(range(count)):
+        with_base_count += test_complex_cal_shorten()
+    print(f"[LOG] Tested {with_base_count} calendars with base and {count - with_base_count} without a base")
+    print("[LOG] Test passed")
+    return 1
 
 def array_to_string(ar):
     f = ""
@@ -326,7 +388,7 @@ def main():
     assert test_shorten_route() == 1
     assert test_s_route() == 1
     assert test_complete_process_n(100) != -1
-    assert test_complex_cal_shorten_wrapper(10) == 1
+    assert test_complex_cal_shorten_wrapper(50) == 1
 
 if __name__ == "__main__":
     main()

@@ -236,6 +236,14 @@ func ShortenComplex(hasBaseCalendar bool, url *string, filter *[]string, extraSu
 		return nil
 	}
 
+	sort.Strings(*extraSubjects)
+
+	for i := 0; i < len(*extraSubjects)-1; i++ {
+		if (*extraSubjects)[i] == (*extraSubjects)[i+1] {
+			return nil
+		}
+	}
+
 	if hasBaseCalendar {
 
 		if len(*filter) == 0 {
@@ -337,7 +345,7 @@ func LatestCourses() *string {
 }
 
 func SubjIdToName(ids []string) []string {
-	fmt.Println(ids)
+	// fmt.Println(ids)
 	// filter := bson.M{"subj_id": bson.M{"$in": ids}}
 	// cursor, err := SubjectsColl.Find(context.Background(), filter)
 
@@ -372,7 +380,7 @@ func SubjIdToName(ids []string) []string {
 		i++
 	}
 
-	fmt.Println(subjectNames)
+	// fmt.Println(subjectNames)
 
 	return subjectNames
 }
