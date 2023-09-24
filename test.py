@@ -271,6 +271,34 @@ def remove_complex_from_db(id):
     assert COMPLEX_COL.delete_one({"short_url":id}).deleted_count == 1
 
 
+def test_cshorten_route():
+
+    res = requests.get(f"{URL}cshorten")
+    assert not res.ok
+
+    res = requests.get(f"{URL}cshorten?has_base_calendar=false&url=dnsao")
+    assert not res.ok
+
+    res = requests.get(f"{URL}courses")
+    assert res.ok
+    cal = random.choice(json.loads(res.text)['cals'])
+
+    res = requests.get(f"{URL}cshorten?has_base_calendar=true&url={cal}&subjects=dbdsbiid~dd11&extra_subjects=70837217388819")
+    assert not res.ok
+
+    res = requests.get(f"{URL}urlinfo?url={cal}")
+    assert res.ok
+
+    info = json.loads(res.text)
+
+    base_cal_subjs = random.sample(info['courses'], random.randint(1, len(info['courses'])))
+
+    base_cal_subjs = list(map(lambda x: x[0], base_cal_subjs))
+
+    res = requests.get(f"{URL}cshorten?has_base_calendar=true&url={cal}&subjects={'~'.join(base_cal_subjs)}&extra_subjects=70837217388819")
+    assert not res.ok
+
+    return 1
 
 def test_complex_cal_shorten():
 
@@ -355,6 +383,16 @@ def test_complex_cal_shorten():
 
     full_cal = Calendar(res.text)
 
+    if len(full_cal.events) != event_count:
+        # attempt cache update
+        force_subject_cache_update(all_subjs_selection,id)
+    
+    res = requests.get(f"{URL}cs/{id}")
+
+    assert res.ok
+
+    full_cal = Calendar(res.text)
+
     assert len(full_cal.events) == event_count
 
     if has_base_cal:
@@ -363,6 +401,12 @@ def test_complex_cal_shorten():
 
     return has_base_cal
 
+
+def force_subject_cache_update(ids, complexshort):
+    for id in ids:
+        assert SUBJECT_CACHE_COL.update_one({'id':id},{ "$set": { "date_added":  976057200} }).modified_count == 1
+    
+    requests.get(f"{URL}cs/{complexshort}")
 
 
 def test_complex_cal_shorten_wrapper(count):
@@ -442,6 +486,8 @@ def main():
     assert test_complex_cal_shorten_wrapper(100) == 1
     assert test_course_cache() == 1
     assert test_subject_cache() == 1
+    assert test_cshorten_route() == 1
+    
 
 if __name__ == "__main__":
     main()

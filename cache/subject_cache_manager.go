@@ -58,7 +58,7 @@ func FetchSubjectCalendar(id *string) *string {
 
 func updateSubjectCache(document *mh.SubjectCalendarCache) (*string, bool) {
 
-	if time.Now().Unix()-(*document).DateAdded < 1000 {
+	if time.Now().Unix()-(*document).DateAdded < _MAX_AGE {
 		return nil, false
 	}
 

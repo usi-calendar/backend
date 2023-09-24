@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	// ics "github.com/JacopoD/golang-ical"
-	// mongo "usicalendar/mongo"
 	cache "usicalendar/cache"
 
 	ics "github.com/arran4/golang-ical"
@@ -43,7 +41,7 @@ func GetAllSubjects(url *string) (*map[string]int, *ics.Calendar) {
 			if url_prop != nil {
 				m[url_prop.Value] = 1
 
-			} else if summary_prop != nil {
+			} else if summary_prop != nil { //workaround, a very small portion of events don't have a url
 				m[summary_prop.Value] = 1
 			}
 		}
@@ -98,6 +96,7 @@ func MergeRawCalendars(rawCals []*string) *string {
 		if cal == nil {
 			continue
 		}
+		// fmt.Println(*cal)
 		strippedRawCal := stripRawCal(cal)
 
 		if strippedRawCal == nil {
@@ -108,6 +107,8 @@ func MergeRawCalendars(rawCals []*string) *string {
 	}
 	builder.WriteString("END:VCALENDAR")
 	var result string = builder.String()
+
+	// fmt.Println(result)
 
 	return &result
 }

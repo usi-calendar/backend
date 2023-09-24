@@ -48,6 +48,7 @@ func FromComplexShortened(short *string) *string {
 
 	var l int = len(result.ExtraSubjects)
 
+	// Generate base calendar
 	if result.HasBaseCalendar {
 		subjects, baseCalendar = cal.GetAllSubjects(&(*result).Url)
 		baseCalendar = cal.FilterCalendar(baseCalendar, subjects, &(*result).BaseSubjects)
@@ -61,6 +62,7 @@ func FromComplexShortened(short *string) *string {
 		rawCals[l-1] = &rawBaseCalendar
 	}
 
+	// Get all extra subject calendars
 	for i, extra_subject := range result.ExtraSubjects {
 		raw := cal.GetSubjCalFromIdx(&extra_subject)
 		rawCals[i] = raw
@@ -89,8 +91,6 @@ func Shorten(url *string, filter *[]string) *string {
 	}
 
 	sort.Strings(*filter)
-
-	// r = COL.find_one({"url":url, "courses" : f})
 
 	var result *mh.ShortLink
 	var err = mh.ShortLinksColl.FindOne(context.Background(),
@@ -138,18 +138,34 @@ func Shorten(url *string, filter *[]string) *string {
 // True: a combination of a base course + subjects
 // False: just subjects
 func ShortenComplex(hasBaseCalendar bool, url *string, baseFilter *[]string, extraSubjects *[]string) *string {
+	// extra subjects are required for a complex calendar
 	if len(*extraSubjects) == 0 {
 		return nil
 	}
 
 	sort.Strings(*extraSubjects)
 
+	// check for duplicate extra subjects
 	for i := 0; i < len(*extraSubjects)-1; i++ {
 		if (*extraSubjects)[i] == (*extraSubjects)[i+1] {
 			return nil
 		}
 	}
 
+	// Check that all extra subjects exist
+	filter := bson.M{"subj_id": bson.M{"$in": *extraSubjects}}
+	count, err := mh.SubjectsColl.CountDocuments(context.Background(), filter)
+
+	if err != nil {
+		return nil
+	}
+	if count != int64(len(*extraSubjects)) {
+		return nil
+	}
+
+	// If this point is reached the request should be correctly constructed
+
+	// create base filtered calendar if requested
 	if hasBaseCalendar {
 
 		if len(*baseFilter) == 0 {
@@ -171,16 +187,6 @@ func ShortenComplex(hasBaseCalendar bool, url *string, baseFilter *[]string, ext
 
 		sort.Strings(*baseFilter)
 
-	}
-
-	filter := bson.M{"subj_id": bson.M{"$in": *extraSubjects}}
-	count, err := mh.SubjectsColl.CountDocuments(context.Background(), filter)
-
-	if err != nil {
-		return nil
-	}
-	if count != int64(len(*extraSubjects)) {
-		return nil
 	}
 
 	var result *mh.ComplexShortLink
@@ -261,10 +267,8 @@ func LatestCourses() *string {
 }
 
 func SubjIdToName(ids []string) []string {
-	// fmt.Println(ids)
-	// filter := bson.M{"subj_id": bson.M{"$in": ids}}
-	// cursor, err := SubjectsColl.Find(context.Background(), filter)
 
+	// Make sure that the order in which the result will be returned is the same as in the array of ids
 	pipeline := mongo.Pipeline{
 		{
 			{"$match", bson.M{"subj_id": bson.M{"$in": ids}}},
@@ -277,8 +281,8 @@ func SubjIdToName(ids []string) []string {
 		},
 	}
 
-	cursor, err := mh.SubjectsColl.Aggregate(context.Background(), pipeline)
-
+	filter := bson.M{"subj_id": bson.M{"$in": ids}}
+	count, err := mh.SubjectsColl.CountDocuments(context.Background(), filter)
 	if err != nil {
 		fmt.Println(err)
 		return nil
@@ -287,17 +291,42 @@ func SubjIdToName(ids []string) []string {
 	var result mh.Subject
 
 	subjectNames := make([]string, len(ids))
-	var i int = 0
-	for cursor.Next(context.Background()) {
-		if err := cursor.Decode(&result); err != nil {
+
+	// This is a workaround, it is not guaranteed that every even has an url from which the ID is extracted,
+	// this makes things quite a bit more difficult to handle. In this case there is no subject id therefore the name
+	// of the subject is used as its id. Not ideal
+	if count != int64(len(ids)) {
+		for i, id := range ids {
+			err := mh.SubjectsColl.FindOne(context.Background(), bson.D{{Key: "subj_id", Value: id}}).Decode(&result)
+			if err != nil && err != mongo.ErrNoDocuments {
+				fmt.Println(err)
+				return nil
+			}
+			if err == mongo.ErrNoDocuments {
+				subjectNames[i] = strings.Clone(ids[i])
+			} else {
+				subjectNames[i] = strings.Clone(result.SubjName)
+			}
+		}
+
+	} else {
+
+		cursor, err := mh.SubjectsColl.Aggregate(context.Background(), pipeline)
+
+		if err != nil {
+			fmt.Println(err)
 			return nil
 		}
-		subjectNames[i] = strings.Clone(result.SubjName)
-		i++
+
+		var i int = 0
+		for cursor.Next(context.Background()) {
+			if err := cursor.Decode(&result); err != nil {
+				return nil
+			}
+			subjectNames[i] = strings.Clone(result.SubjName)
+			i++
+		}
 	}
-
-	// fmt.Println(subjectNames)
-
 	return subjectNames
 }
 

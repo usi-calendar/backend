@@ -1,7 +1,6 @@
 package routes
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -149,12 +148,10 @@ func GetComplexShorten(c *gin.Context) {
 	short := mongo.ShortenComplex(hbcbool, &url, &subjects, &extraSubjects)
 
 	if short == nil {
-		fmt.Println("Error with DB")
 		c.Status(400)
 		return
 	}
 
-	// var r string = "{\"shortened\":\"" + c.Request.Host + "/s/" + *short + "\"}"
 	var r string = `{"shortened":"https://` + c.Request.Host + "/cs/" + *short + `"}`
 
 	c.Data(200, ContentTypeJSON, []byte(r))
@@ -181,12 +178,9 @@ func GetShortened(c *gin.Context) {
 
 func GetComplexShortened(c *gin.Context) {
 
-	// c.Header("Access-Control-Allow-Origin", "*")
 	setAccessControlHeader(c)
 
 	var short string = c.Param("shortened")
-
-	// fmt.Println(short)
 
 	calendar := mongo.FromComplexShortened(&short)
 

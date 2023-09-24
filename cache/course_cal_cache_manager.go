@@ -60,7 +60,7 @@ func FetchCourseCalendar(url *string) *string {
 
 func updateCourseCache(document *mh.CourseCalendarCache) (*string, bool) {
 
-	if time.Now().Unix()-(*document).DateAdded < 1000 {
+	if time.Now().Unix()-(*document).DateAdded < _MAX_AGE {
 		return nil, false
 	}
 
