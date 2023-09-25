@@ -1,44 +1,20 @@
 package cal
 
 import (
-	"io"
-	"net/http"
+	"bufio"
+	"fmt"
 	"strings"
 
-	// ics "github.com/JacopoD/golang-ical"
+	cache "usicalendar/cache"
+
 	ics "github.com/arran4/golang-ical"
 )
 
-func simpleGetRequest(url *string) (*string, bool) {
-
-	var resp *http.Response
-	var err error
-
-	resp, err = http.Get(*url)
-
-	if err != nil {
-		return nil, true
-	}
-
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-
-	if err != nil {
-		return nil, true
-	}
-
-	var stringBody string = string(body)
-
-	return &stringBody, false
-}
-
 func GetAllSubjects(url *string) (*map[string]int, *ics.Calendar) {
 
-	r, err := simpleGetRequest(url)
+	r := cache.FetchCourseCalendar(url)
 
-	if err {
-		// fmt.Println("Error")
+	if r == nil {
 		return nil, nil
 	}
 
@@ -62,7 +38,7 @@ func GetAllSubjects(url *string) (*map[string]int, *ics.Calendar) {
 			if url_prop != nil {
 				m[url_prop.Value] = 1
 
-			} else if summary_prop != nil {
+			} else if summary_prop != nil { //workaround, a very small portion of events don't have a url
 				m[summary_prop.Value] = 1
 			}
 		}
@@ -107,5 +83,74 @@ func FilterCalendar(cal *ics.Calendar, oldMap *map[string]int, filter *[]string)
 
 	(*cal).Components = newComponents
 
+	return cal
+}
+
+func MergeRawCalendars(rawCals []*string) *string {
+	var builder strings.Builder
+	builder.WriteString("BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:USI Search\nX-WR-CALNAME:Custom USI Calendar - usicalendar.me\nX-WR-CALDESC:Custom USI Calendar - usicalendar.me\n")
+	for _, cal := range rawCals {
+		if cal == nil {
+			continue
+		}
+		// fmt.Println(*cal)
+		strippedRawCal := stripRawCal(cal)
+
+		if strippedRawCal == nil {
+			continue
+		}
+
+		builder.WriteString(*strippedRawCal)
+	}
+	builder.WriteString("END:VCALENDAR")
+	var result string = builder.String()
+
+	return &result
+}
+
+func stripRawCal(rawCal *string) *string {
+	// Create a scanner to read the input
+	scanner := bufio.NewScanner(strings.NewReader(*rawCal))
+
+	// Initialize a flag to track if "BEGIN:VEVENT" is found
+	foundBegin := false
+
+	// Create a buffer to store the result
+	var result strings.Builder
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		if !foundBegin {
+			if line == "BEGIN:VEVENT" {
+				foundBegin = true
+				result.WriteString(line)
+				result.WriteString("\n")
+			}
+		} else {
+			// Append the line to the result
+			if line == "END:VCALENDAR" {
+				break
+			}
+			result.WriteString(line)
+			result.WriteString("\n")
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		fmt.Println("Error:", err)
+		return nil
+	}
+
+	if !foundBegin {
+		return nil
+	}
+
+	// Get the result as a string and print it
+	outputStr := result.String()
+	return &outputStr
+}
+
+func GetSubjCalFromIdx(idx *string) *string {
+	cal := cache.FetchSubjectCalendar(idx)
 	return cal
 }

@@ -7,18 +7,24 @@ import (
 
 	routes "usicalendar/routes"
 
-	mongo "usicalendar/mongo"
+	mh "usicalendar/mongo_connection_handler"
 )
 
 func main() {
 
-	defer mongo.Cli.Disconnect(context.TODO())
+	defer mh.Cli.Disconnect(context.Background())
 
-	gin.SetMode(gin.ReleaseMode)
+	// gin.SetMode(gin.ReleaseMode)
+	gin.SetMode(gin.DebugMode)
 	r := gin.Default()
-	r.GET("/info", routes.GetInfo)
+	r.SetTrustedProxies(nil)
+	r.GET("/urlinfo", routes.GetInfoFromUrl)
+	r.GET("/idinfo", routes.GetInfoFromId)
 	r.GET("/shorten", routes.GetShorten)
+	r.GET("/cshorten", routes.GetComplexShorten)
 	r.GET("/s/:shortened", routes.GetShortened)
+	r.GET("/cs/:shortened", routes.GetComplexShortened)
 	r.GET("/courses", routes.GetCalendars)
-	r.Run()
+	r.GET("/extcourses", routes.GetAllCourses)
+	r.Run(":8080")
 }

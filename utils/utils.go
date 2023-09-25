@@ -1,12 +1,17 @@
 package utils
 
 import (
+	"io"
+	"log"
 	"math/rand"
+	"net/http"
 	"strings"
 	"time"
 )
 
 var src = rand.NewSource(time.Now().UnixNano())
+
+var Logger = log.Default()
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 const (
@@ -32,4 +37,28 @@ func RandStringBytesMaskImprSrcSB(n int) string {
 	}
 
 	return sb.String()
+}
+
+func SimpleGetRequest(url *string) (*string, bool) {
+
+	var resp *http.Response
+	var err error
+
+	resp, err = http.Get(*url)
+
+	if err != nil {
+		return nil, true
+	}
+
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+
+	if err != nil {
+		return nil, true
+	}
+
+	var stringBody string = string(body)
+
+	return &stringBody, false
 }
