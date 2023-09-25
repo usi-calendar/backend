@@ -17,6 +17,7 @@ func main() {
 	// gin.SetMode(gin.ReleaseMode)
 	gin.SetMode(gin.DebugMode)
 	r := gin.Default()
+	r.SetTrustedProxies(nil)
 	r.GET("/urlinfo", routes.GetInfoFromUrl)
 	r.GET("/idinfo", routes.GetInfoFromId)
 	r.GET("/shorten", routes.GetShorten)
@@ -25,5 +26,5 @@ func main() {
 	r.GET("/cs/:shortened", routes.GetComplexShortened)
 	r.GET("/courses", routes.GetCalendars)
 	r.GET("/extcourses", routes.GetAllCourses)
-	r.Run()
+	r.Run(":8080")
 }

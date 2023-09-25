@@ -2,6 +2,7 @@ package utils
 
 import (
 	"io"
+	"log"
 	"math/rand"
 	"net/http"
 	"strings"
@@ -9,6 +10,8 @@ import (
 )
 
 var src = rand.NewSource(time.Now().UnixNano())
+
+var Logger = log.Default()
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 const (

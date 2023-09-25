@@ -36,8 +36,6 @@ func FetchCourseCalendar(url *string) *string {
 		return nil
 	}
 
-	// var document mh.CourseCalendar
-
 	document := mh.CourseCalendarCache{
 		ID:        primitive.NewObjectID(),
 		Url:       *url,
@@ -53,7 +51,7 @@ func FetchCourseCalendar(url *string) *string {
 		return nil
 	}
 
-	fmt.Println("Created new document in course calendar cache")
+	utils.Logger.Println("New course cache " + *url)
 
 	return rawCal
 }
@@ -79,7 +77,7 @@ func updateCourseCache(document *mh.CourseCalendarCache) (*string, bool) {
 		return nil, false
 	}
 
-	fmt.Println("Updated cache for " + document.CID)
+	utils.Logger.Println("Updated course cache " + document.CID)
 
 	return rawCal, true
 }

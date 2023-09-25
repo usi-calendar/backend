@@ -12,12 +12,9 @@ import (
 
 func GetAllSubjects(url *string) (*map[string]int, *ics.Calendar) {
 
-	// r, err := utils.SimpleGetRequest(url)
-
 	r := cache.FetchCourseCalendar(url)
 
 	if r == nil {
-		// fmt.Println("Error")
 		return nil, nil
 	}
 
@@ -108,8 +105,6 @@ func MergeRawCalendars(rawCals []*string) *string {
 	builder.WriteString("END:VCALENDAR")
 	var result string = builder.String()
 
-	// fmt.Println(result)
-
 	return &result
 }
 
@@ -156,8 +151,6 @@ func stripRawCal(rawCal *string) *string {
 }
 
 func GetSubjCalFromIdx(idx *string) *string {
-	// var url string = "https://search.usi.ch/courses/" + *idx + "/*/schedules/ics"
-	// cal, err := utils.SimpleGetRequest(&url)
 	cal := cache.FetchSubjectCalendar(idx)
 	return cal
 }

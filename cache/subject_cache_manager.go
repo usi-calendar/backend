@@ -14,6 +14,7 @@ import (
 )
 
 func FetchSubjectCalendar(id *string) *string {
+	// Check if cache document exists
 	var result mh.SubjectCalendarCache
 	err := mh.SubjectCalendarCacheColl.FindOne(context.Background(), bson.D{{Key: "id", Value: *id}}).Decode(&result)
 
@@ -51,13 +52,14 @@ func FetchSubjectCalendar(id *string) *string {
 		return nil
 	}
 
-	fmt.Println("Created cache for subject " + *id)
+	utils.Logger.Println("New subject cache " + *id)
 
 	return rawCal
 }
 
 func updateSubjectCache(document *mh.SubjectCalendarCache) (*string, bool) {
 
+	// if cache is too old, update
 	if time.Now().Unix()-(*document).DateAdded < _MAX_AGE {
 		return nil, false
 	}
@@ -79,7 +81,7 @@ func updateSubjectCache(document *mh.SubjectCalendarCache) (*string, bool) {
 		return nil, false
 	}
 
-	fmt.Println("Updated cache for subject " + document.SID)
+	utils.Logger.Println("Updated cache for subject " + document.SID)
 
 	return rawCal, true
 }

@@ -2,8 +2,8 @@ package mongo_connection_handler
 
 import (
 	"context"
-	"fmt"
 	"os"
+	"usicalendar/utils"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -126,7 +126,7 @@ func connection() *mongo.Client {
 
 	CoursesColl = Db.Collection("courses")
 
-	fmt.Println("Connected to MongoDB!")
+	utils.Logger.Println("Connected to MongoDB!")
 
 	return client
 }
