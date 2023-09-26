@@ -404,8 +404,13 @@ def test_complex_cal_shorten():
 
 def force_subject_cache_update(ids, complexshort):
     for id in ids:
-        assert SUBJECT_CACHE_COL.update_one({'id':id},{ "$set": { "date_added":  976057200} }).modified_count == 1
-    
+        result = SUBJECT_CACHE_COL.update_one({'id':id},{ "$set": { "date_added":  976057200} })
+        assert SUBJECT_CACHE_COL.find_one({'id':id})['date_added'] == 976057200
+        if result.modified_count != 1:
+            print(f"[ERROR] Did not update subject {id}")
+            print(f"Ack : {result.acknowledged}")
+            assert 1 == 0
+
     requests.get(f"{URL}cs/{complexshort}")
 
 
@@ -487,7 +492,6 @@ def main():
     assert test_course_cache() == 1
     assert test_subject_cache() == 1
     assert test_cshorten_route() == 1
-    
 
 if __name__ == "__main__":
     main()
