@@ -46,6 +46,10 @@ func SimpleGetRequest(url *string) (*string, bool) {
 
 	resp, err = http.Get(*url)
 
+	if resp.StatusCode < 400 {
+		return nil, true
+	}
+
 	if err != nil {
 		return nil, true
 	}
