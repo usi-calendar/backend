@@ -30,7 +30,7 @@ func GetInfoFromUrl(c *gin.Context) {
 	subjectsMap, _ := cal.GetAllSubjects(&url)
 
 	if subjectsMap == nil {
-		c.Status(500)
+		c.Status(400)
 		return
 	}
 
@@ -197,7 +197,7 @@ func GetCalendars(c *gin.Context) {
 	var data *string = mongo.LatestCourses()
 
 	if data == nil {
-		c.Status(500)
+		c.Status(400)
 		return
 	}
 
@@ -209,7 +209,7 @@ func GetAllCourses(c *gin.Context) {
 	var data *string = mongo.InfoAllCourses()
 
 	if data == nil {
-		c.Status(500)
+		c.Status(400)
 		return
 	}
 
