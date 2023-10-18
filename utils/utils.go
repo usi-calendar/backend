@@ -9,6 +9,8 @@ import (
 	"time"
 )
 
+const calValidator = "BEGIN:VCALENDAR"
+
 var src = rand.NewSource(time.Now().UnixNano())
 
 var Logger = log.Default()
@@ -50,7 +52,7 @@ func SimpleGetRequest(url *string) (*string, bool) {
 		return nil, true
 	}
 
-	if resp.StatusCode < 400 {
+	if (int)(resp.StatusCode/100) > 3 {
 		return nil, true
 	}
 
@@ -65,4 +67,13 @@ func SimpleGetRequest(url *string) (*string, bool) {
 	var stringBody string = string(body)
 
 	return &stringBody, false
+}
+
+func IsCalendarValid(cal *string) bool {
+	for i := 0; i < len(calValidator); i++ {
+		if (*cal)[i] != calValidator[i] {
+			return false
+		}
+	}
+	return true
 }

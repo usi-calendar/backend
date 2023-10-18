@@ -36,6 +36,10 @@ func FetchCourseCalendar(url *string) *string {
 		return nil
 	}
 
+	if !utils.IsCalendarValid(rawCal) {
+		return nil
+	}
+
 	document := mh.CourseCalendarCache{
 		ID:        primitive.NewObjectID(),
 		Url:       *url,
@@ -65,6 +69,10 @@ func updateCourseCache(document *mh.CourseCalendarCache) (*string, bool) {
 	rawCal, e := utils.SimpleGetRequest(&document.Url)
 
 	if e {
+		return nil, false
+	}
+
+	if !utils.IsCalendarValid(rawCal) {
 		return nil, false
 	}
 
