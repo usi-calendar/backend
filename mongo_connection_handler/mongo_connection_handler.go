@@ -8,8 +8,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-
-	"github.com/joho/godotenv"
 )
 
 var Cli *mongo.Client = connection()
@@ -86,12 +84,17 @@ type SubjectCalendarCache struct {
 
 func connection() *mongo.Client {
 
+	// UNCOMMENT FOR DEBUGGING WITH .ENV FILE
+	// ######################################
 	// Load .env file
-	err := godotenv.Load(".env")
 
-	if err != nil {
-		panic(err)
-	}
+	// err := godotenv.Load(".env")
+
+	// if err != nil {
+	// 	panic(err)
+	// }
+
+	// ######################################
 
 	clientOptions := options.Client()
 	clientOptions.ApplyURI(os.Getenv("MONGO_CONNECTION_STRING") + "&timeoutMS=5000")
